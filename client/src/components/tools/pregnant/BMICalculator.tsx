@@ -1,47 +1,50 @@
 import React, { useEffect, useState } from "react";
 import { Calculator, Scale, Ruler, AlertTriangle, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { bbtoolsService, BBMetric, CreateBBMetricRequest } from "../../../services/BBToolsService";
+import { bbtoolsService as defaultService, BBMetric, CreateBBMetricRequest } from "../../../services/BBToolsService";
 
-const BMICalculator: React.FC = () => {
+interface BMICalculatorProps {
+  service?: typeof defaultService; // optional prop to inject mock service
+}
+
+const BMICalculator: React.FC<BMICalculatorProps> = ({ service = defaultService }) => {
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
   const [bmi, setBmi] = useState<number | null>(null);
 
-  // persisted metrics (only those with title === "BMI")
   const [savedMetrics, setSavedMetrics] = useState<BBMetric[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load persisted BMI metrics on mount
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await bbtoolsService.getAll();
+        const res = await service.getAll();
         if (!mounted) return;
         if (!res.success) {
-          // not authenticated or no data - keep empty
           setSavedMetrics([]);
           setLoading(false);
           return;
         }
 
         const metrics = res.data?.metrics ?? [];
-        const bmiMetrics = metrics.filter((m: BBMetric) => m.title === "BMI").sort((a: BBMetric, b: BBMetric) => {
-          const da = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt || 0).getTime();
-          const db = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt || 0).getTime();
-          return db - da;
-        });
+        const bmiMetrics = metrics
+          .filter((m: BBMetric) => m.title === "BMI")
+          .sort((a: BBMetric, b: BBMetric) => {
+            const da = a.updatedAt ? new Date(a.updatedAt).getTime() : new Date(a.createdAt || 0).getTime();
+            const db = b.updatedAt ? new Date(b.updatedAt).getTime() : new Date(b.createdAt || 0).getTime();
+            return db - da;
+          });
+
         setSavedMetrics(bmiMetrics);
-        // if there's a latest saved metric, try to populate inputs
+
         if (bmiMetrics.length > 0) {
           const latest = bmiMetrics[0];
-          // try parse notes JSON if present
           try {
             if (latest.notes) {
               const parsed = JSON.parse(latest.notes);
@@ -50,7 +53,6 @@ const BMICalculator: React.FC = () => {
               if (parsed.heightUnit) setHeightUnit(parsed.heightUnit);
               if (parsed.weightUnit) setWeightUnit(parsed.weightUnit);
             } else if (latest.unit) {
-              // fallback: unit might be like "kg/cm"
               const parts = latest.unit.split("/");
               if (parts[0]) setWeightUnit(parts[0]);
               if (parts[1]) setHeightUnit(parts[1]);
@@ -60,7 +62,6 @@ const BMICalculator: React.FC = () => {
               if (!isNaN(num)) setBmi(Number(num.toFixed(1)));
             }
           } catch (e) {
-            // ignore parse errors
             console.warn("Failed to parse latest BMI metric notes", e);
           }
         }
@@ -73,7 +74,7 @@ const BMICalculator: React.FC = () => {
     };
     load();
     return () => { mounted = false; };
-  }, []);
+  }, [service]);
 
   const calculateBMI = async () => {
     setError(null);
@@ -90,24 +91,14 @@ const BMICalculator: React.FC = () => {
       return;
     }
 
-    // Convert weight to kg if needed
-    if (weightUnit === "lbs") {
-      weightInKg = weightInKg * 0.453592;
-    }
+    if (weightUnit === "lbs") weightInKg *= 0.453592;
 
-    // Convert height to meters if needed
-    if (heightUnit === "cm") {
-      heightInMeters = heightInMeters / 100;
-    } else if (heightUnit === "m") {
-      // already meters
-    } else if (heightUnit === "ft") {
-      // user enters feet.decimal like 5.6 => treat integer part as feet, decimal portion as fractional feet
+    if (heightUnit === "cm") heightInMeters /= 100;
+    else if (heightUnit === "ft") {
       const feet = Math.floor(heightInMeters);
       const fractional = heightInMeters - feet;
-      // Treat decimal fraction as inches fraction (user expects 5.6 -> 5ft6in)
-      // if fractional <= 0.12 it's probably decimal feet, we'll approximate by multiplying by 12 to get inches.
       const inches = Math.round(fractional * 12);
-      heightInMeters = (feet * 0.3048) + (inches * 0.0254);
+      heightInMeters = feet * 0.3048 + inches * 0.0254;
     }
 
     if (heightInMeters <= 0) {
@@ -119,7 +110,6 @@ const BMICalculator: React.FC = () => {
     const rounded = parseFloat(bmiValue.toFixed(1));
     setBmi(rounded);
 
-    // Auto-save the calculated BMI
     await saveMetricAuto(rounded);
   };
 
@@ -140,7 +130,6 @@ const BMICalculator: React.FC = () => {
     return recommendations[category] ?? "";
   };
 
-  // Save metric (called automatically after calculation)
   const saveMetricAuto = async (bmiValue: number) => {
     setSaving(true);
     setError(null);
@@ -149,23 +138,11 @@ const BMICalculator: React.FC = () => {
         title: "BMI",
         value: String(bmiValue),
         unit: `${weightUnit}/${heightUnit}`,
-        notes: JSON.stringify({
-          weight: Number(weight),
-          height: Number(height),
-          weightUnit,
-          heightUnit,
-        }),
+        notes: JSON.stringify({ weight: Number(weight), height: Number(height), weightUnit, heightUnit }),
       };
-      const res = await bbtoolsService.createMetric(payload);
-      if (!res.success) {
-        // may be unauthenticated or backend error - show message but keep UI working
-        console.warn("Failed to save metric:", res.error ?? res.message);
-        // don't treat as fatal; allow local UI to still show bmi
-        return;
-      }
-      // prepend new created metric to list
-      const created = res.data;
-      setSavedMetrics(prev => [created, ...prev]);
+      const res = await service.createMetric(payload);
+      if (!res.success) return;
+      setSavedMetrics(prev => [res.data, ...prev]);
     } catch (e) {
       console.error("Error saving BMI metric:", e);
     } finally {
@@ -177,7 +154,7 @@ const BMICalculator: React.FC = () => {
     if (!metricId) return;
     setError(null);
     try {
-      const res = await bbtoolsService.deleteMetric(String(metricId));
+      const res = await service.deleteMetric(String(metricId));
       if (!res.success) {
         setError(res.error ?? "Failed to delete saved BMI");
         return;
