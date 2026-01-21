@@ -16,18 +16,15 @@ type StoryObj<T> = {
   render?: (args: any) => React.ReactElement;
 };
 
-// Wrapper component to handle state and mock backend
 const DiaperTrackerWrapper = ({ initialDiapers }: { initialDiapers: DiaperLog[] }) => {
   const [diapers, setDiapers] = useState<DiaperLog[]>(initialDiapers);
   const mockDiaperId = useRef(100);
   
-  // Override bbtoolsService methods for this instance
   const originalAdd = bbtoolsService.addDiaper;
   const originalUpdate = bbtoolsService.updateDiaper;
   const originalDelete = bbtoolsService.deleteDiaper;
   
   React.useEffect(() => {
-    // Mock addDiaper
     bbtoolsService.addDiaper = async (data: any) => {
       console.log('Mock: Adding diaper', data);
       const newEntry: DiaperLog = { 
@@ -75,7 +72,6 @@ const DiaperTrackerWrapper = ({ initialDiapers }: { initialDiapers: DiaperLog[] 
   return <DiaperTracker diapers={diapers} onRefresh={handleRefresh} />;
 };
 
-// Mock data for stories
 const mockDiaperLogs: DiaperLog[] = [
   {
     id: 1,
@@ -90,7 +86,7 @@ const mockDiaperLogs: DiaperLog[] = [
     id: 2,
     userId: 1,
     diaperType: 'dirty',
-    occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     color: 'yellow',
     consistency: 'seedy',
     notes: 'Normal breastfed stool',
@@ -101,7 +97,7 @@ const mockDiaperLogs: DiaperLog[] = [
     id: 3,
     userId: 1,
     diaperType: 'both',
-    occurredAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    occurredAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     color: 'brown',
     consistency: 'pasty',
     notes: 'Mixed feeding stool',
@@ -112,7 +108,7 @@ const mockDiaperLogs: DiaperLog[] = [
     id: 4,
     userId: 1,
     diaperType: 'wet',
-    occurredAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    occurredAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     notes: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -121,7 +117,7 @@ const mockDiaperLogs: DiaperLog[] = [
     id: 5,
     userId: 1,
     diaperType: 'dirty',
-    occurredAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    occurredAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
     color: 'green',
     consistency: 'watery',
     notes: 'Loose stool - monitor for dehydration',
@@ -134,7 +130,7 @@ const yesterdayLog: DiaperLog = {
   id: 6,
   userId: 1,
   diaperType: 'wet',
-  occurredAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // yesterday
+  occurredAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
   notes: 'Previous day record',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -157,76 +153,38 @@ const meta: Meta<typeof DiaperTracker> = {
 export default meta;
 type Story = StoryObj<typeof DiaperTrackerWrapper>;
 
-/**
- * Default view with no diaper changes logged yet.
- * Shows the empty state with instructions to log the first diaper change.
- * Try adding a new diaper change using the form!
- */
 export const Empty: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[]} />,
 };
 
-/**
- * View with a single diaper change logged.
- * Useful for seeing the basic layout with minimal data.
- */
 export const SingleEntry: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[mockDiaperLogs[0]]} />,
 };
 
-/**
- * View with multiple diaper changes throughout the day.
- * Shows the typical daily tracking with various diaper types.
- * Try editing or deleting entries, or add new ones!
- */
 export const WithMultipleEntries: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={mockDiaperLogs} />,
 };
 
-/**
- * View showing only wet diapers.
- * Useful for hydration monitoring.
- */
 export const WetDiapersOnly: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={mockDiaperLogs.filter(log => log.diaperType === 'wet')} />,
 };
 
-/**
- * View showing only dirty diapers.
- * Includes color and consistency information for health monitoring.
- */
 export const DirtyDiapersOnly: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={mockDiaperLogs.filter(log => log.diaperType === 'dirty')} />,
 };
 
-/**
- * View showing both wet and dirty diapers.
- * Demonstrates the combined diaper type.
- */
 export const BothTypes: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={mockDiaperLogs.filter(log => log.diaperType === 'both')} />,
 };
 
-/**
- * View with diaper changes containing detailed notes.
- * Shows how notes are displayed for each entry.
- */
 export const WithNotes: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={mockDiaperLogs.filter(log => log.notes && log.notes.length > 0)} />,
 };
 
-/**
- * View with diaper changes from different days.
- * Useful for seeing how historical data is displayed.
- */
 export const MultipleDays: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[...mockDiaperLogs, yesterdayLog]} />,
 };
 
-/**
- * View with concerning stool patterns.
- * Shows green/watery stools that might need attention.
- */
 export const ConcerningPattern: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[
     {
@@ -254,10 +212,6 @@ export const ConcerningPattern: Story = {
   ]} />,
 };
 
-/**
- * View with newborn black stools (meconium).
- * Shows normal first-day stools.
- */
 export const NewbornStools: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[
     {
@@ -283,10 +237,6 @@ export const NewbornStools: Story = {
   ]} />,
 };
 
-/**
- * View with extensive tracking data.
- * Shows a full day of comprehensive diaper monitoring.
- */
 export const ExtensiveTracking: Story = {
   render: () => <DiaperTrackerWrapper initialDiapers={[
     ...mockDiaperLogs,
