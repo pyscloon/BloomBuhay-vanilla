@@ -10,6 +10,7 @@
     "@storybook/addon-onboarding": "^10.1.11",
     "@storybook/addon-webpack5-compiler-swc": "^4.0.2",
     "@storybook/react-webpack5": "^10.1.11",
+    "@storybook/test": "^8.6.15",
     "@types/axios": "^0.9.36",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.2",
