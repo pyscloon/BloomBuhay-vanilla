@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import BMICalculator from "./BMICalculator";
+import BMICalculator from "../components/tools/pregnant/BMICalculator";
 
 /* ---------------- MOCK SERVICES ---------------- */
 const fakeService = {
